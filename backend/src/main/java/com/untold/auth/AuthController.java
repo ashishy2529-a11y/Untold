@@ -1,15 +1,18 @@
 package com.untold.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Locale;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -17,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,18 +43,28 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         String email=request.email().trim().toLowerCase(Locale.ROOT);
         if(users.existsByEmail(email)) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","An account with this email already exists."));
-        users.save(new UserAccount(email, encoder.encode(request.password())));
+        try {
+            users.save(new UserAccount(email, encoder.encode(request.password())));
+        } catch (DataIntegrityViolationException duplicate) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","An account with this email already exists."));
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message","Account created. Please sign in."));
     }
 
     @PostMapping("/login")
-    public Map<String,String> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+    public Map<String,String> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest, HttpServletResponse response) {
         String email=request.email().trim().toLowerCase(Locale.ROOT);
-        Authentication authentication=authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email,request.password()));
+        final Authentication authentication;
+        try {
+            authentication=authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email,request.password()));
+        } catch (BadCredentialsException invalid) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Email or password is incorrect.");
+        }
+        if (servletRequest.getSession(false) != null) servletRequest.changeSessionId();
         SecurityContext context=SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
-        contextRepository.saveContext(context,servletRequest,new org.springframework.mock.web.MockHttpServletResponse());
+        contextRepository.saveContext(context,servletRequest,response);
         return Map.of("message","Signed in");
     }
 
