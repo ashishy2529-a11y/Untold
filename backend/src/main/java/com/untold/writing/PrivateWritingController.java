@@ -71,7 +71,7 @@ public class PrivateWritingController {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
     private WritingResponse toResponse(PrivateWriting writing) {
-        return new WritingResponse(writing.getId(), writing.getWritingType(), encryption.decrypt(writing.getEncryptedTitle()),
+        return new WritingResponse(writing.getId(), writing.getWritingType(), writing.getEncryptedTitle() == null ? writing.getTitle() : encryption.decrypt(writing.getEncryptedTitle()),
                 encryption.decrypt(writing.getEncryptedContent()), writing.getCreatedAt(), writing.getUpdatedAt());
     }
 }
