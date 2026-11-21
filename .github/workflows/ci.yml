@@ -46,6 +46,7 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: test-root-password
       COOKIE_SECURE: false
+      UNTOLD_DATA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
