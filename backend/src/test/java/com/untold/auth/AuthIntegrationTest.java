@@ -1,5 +1,8 @@
 package com.untold.auth;
 
+import com.untold.writing.PrivateWriting;
+import com.untold.writing.PrivateWritingRepository;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
