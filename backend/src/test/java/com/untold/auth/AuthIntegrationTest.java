@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -17,23 +18,24 @@ import org.springframework.test.web.servlet.MvcResult;
 class AuthIntegrationTest {
     @Autowired private MockMvc mvc;
 
-    @Test
-    void registrationStoresPasswordHashAndSessionLoginProtectsMe() throws Exception {
-        String email = "test-" + java.util.UUID.randomUUID() + "@example.com";
+    private MockHttpSession createAccountAndLogin(String email) throws Exception {
         mvc.perform(post("/api/auth/register").with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + email + "\",\"password\":\"a-long-test-password\"}"))
             .andExpect(status().isCreated());
-
         MvcResult login = mvc.perform(post("/api/auth/login").with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + email + "\",\"password\":\"a-long-test-password\"}"))
-            .andExpect(status().isOk())
-            .andReturn();
+            .andExpect(status().isOk()).andReturn();
+        return (MockHttpSession) login.getRequest().getSession(false);
+    }
 
-        mvc.perform(get("/api/auth/me").session((org.springframework.mock.web.MockHttpSession) login.getRequest().getSession(false)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.email").value(email));
+    @Test
+    void registrationAndSessionLoginWork() throws Exception {
+        String email = "test-" + java.util.UUID.randomUUID() + "@example.com";
+        MockHttpSession session = createAccountAndLogin(email);
+        mvc.perform(get("/api/auth/me").session(session))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.email").value(email));
     }
 
     @Test
@@ -47,5 +49,27 @@ class AuthIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"short@example.com\",\"password\":\"short\"}"))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void privateWritingIsEncryptedAndOwnedByCreatingAccount() throws Exception {
+        String ownerEmail = "owner-" + java.util.UUID.randomUUID() + "@example.com";
+        String otherEmail = "other-" + java.util.UUID.randomUUID() + "@example.com";
+        MockHttpSession owner = createAccountAndLogin(ownerEmail);
+        MockHttpSession other = createAccountAndLogin(otherEmail);
+
+        MvcResult created = mvc.perform(post("/api/private-writing/void").session(owner).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"A private note\",\"content\":\"This should only belong to its owner.\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.content").value("This should only belong to its owner."))
+            .andReturn();
+
+        String id = com.jayway.jsonpath.JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+        mvc.perform(get("/api/private-writing/void/" + id).session(other))
+            .andExpect(status().isNotFound());
+        mvc.perform(get("/api/private-writing/void/" + id).session(owner))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("A private note"));
     }
 }
