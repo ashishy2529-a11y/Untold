@@ -74,6 +74,7 @@ class AuthIntegrationTest {
         String id = com.jayway.jsonpath.JsonPath.read(created.getResponse().getContentAsString(), "$.id");
         PrivateWriting stored = writings.findAll().stream().filter(item -> item.getId().toString().equals(id)).findFirst().orElseThrow();
         assertFalse(new String(stored.getEncryptedContent(), StandardCharsets.UTF_8).contains("This should only belong to its owner."));
+        assertFalse(new String(stored.getEncryptedTitle(), StandardCharsets.UTF_8).contains("A private note"));
         mvc.perform(get("/api/private-writing/void/" + id).session(other))
             .andExpect(status().isNotFound());
         mvc.perform(get("/api/private-writing/void").session(other))
