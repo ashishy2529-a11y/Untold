@@ -3,42 +3,60 @@
 
 UNTOLD is a privacy-conscious space for private expression, anonymous community and reflection. It is designed around consent, user control and safety—not engagement at any cost.
 
-## Project status
-This repository contains the initial application scaffold:
-- React + Vite frontend with a responsive UNTOLD dashboard and working local prototype interactions.
-- Spring Boot backend starter with health endpoint and API foundation.
-- MySQL schema draft and product/security documentation.
+## Current development status
 
-**Important:** The current frontend stores prototype entries in browser local storage. It is not a secure private journal service and must not be used for sensitive or real personal writing. The backend is a starter, not production authentication or a production-ready moderation system.
+The repository now includes:
+- Responsive React + Vite dashboard with account registration and sign-in UI.
+- Spring Boot API with BCrypt password hashing, server-side sessions and CSRF protection.
+- MySQL persistence managed by Flyway migrations.
+- THE VOID and THE UNSENT create, list, read, update and delete API.
+- AES-256-GCM encryption for private writing before it is stored in MySQL.
+- Server-side ownership checks; one account cannot read, update or delete another account's private entries.
+- My Space UI for viewing and deleting account-owned writing.
+- GitHub Actions workflows for frontend build and backend integration tests.
+
+The community feed is still sample/demo content. Other feature cards are entry points/placeholders; they are not complete production workflows.
 
 ## Repository layout
 - `frontend/` — React application
-- `backend/` — Java 21 / Spring Boot API starter
-- `database/` — MySQL schema draft
+- `backend/` — Java 21 / Spring Boot API
+- `database/` — legacy schema design draft; current development tables are created by Flyway
 - `docs/` — product, architecture, privacy and development notes
 
 ## Run locally
 
-### Frontend
+### 1. Start MySQL
+Create a MySQL 8 database named `untold`. The backend uses Flyway to create the required tables.
+
+### 2. Configure and run the backend
+Requires Java 21 and Maven. Set these environment variables in your terminal (use your own database credentials and generate your own random 32-byte Base64 encryption key):
+
+```bash
+export DB_URL=jdbc:mysql://localhost:3306/untold
+export DB_USERNAME=your_mysql_user
+export DB_PASSWORD=your_mysql_password
+export COOKIE_SECURE=false
+export CORS_ALLOWED_ORIGIN=http://localhost:5173
+export UNTOLD_DATA_ENCRYPTION_KEY=your_base64_encoded_32_byte_key
+cd backend
+mvn spring-boot:run
+```
+
+Never commit the encryption key. Back it up securely: if it is lost, existing encrypted private writing cannot be decrypted. Do not use the example CI key outside automated tests.
+
+### 3. Configure and run the frontend
 Requires Node.js 20.19+ or 22.12+.
+
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
 ```
 
-### Backend
-Requires Java 21 and Maven.
-```bash
-cd backend
-mvn spring-boot:run
-```
-Health check: `GET http://localhost:8080/api/health`
+The default frontend API base URL is `http://localhost:8080`. Health check: `GET http://localhost:8080/api/health`.
 
-### Database
-Review `database/schema.sql` and configure a local MySQL database before enabling persistence. Never commit credentials.
-
-## Product principles
+## Security and product principles
 1. Private by default; publishing is an explicit action.
 2. Anonymous to other members does not mean technically untraceable.
 3. No sale of private writing and no ad targeting based on it.
@@ -46,11 +64,7 @@ Review `database/schema.sql` and configure a local MySQL database before enablin
 5. Reporting, blocking, moderation, deletion and appeals are core product requirements.
 6. Human experiments are voluntary and transparently described.
 
-## Planned first release
-1. Account and secure session foundation.
-2. THE VOID.
-3. THE UNSENT.
-4. SOMEONE, SOMEWHERE.
-5. Reporting, blocking and moderator workflows.
+## Not production-ready yet
+Email verification, password reset, login throttling/rate limiting, key rotation and recovery procedures, account-wide export/deletion, security monitoring, independent security review, production deployment and real-device verification remain pending. The community modules are not live or moderated. Do not enter sensitive writing into a deployment you do not control, and do not treat UNTOLD as emergency or clinical support.
 
 See [Product specification](docs/PRODUCT.md), [Architecture](docs/ARCHITECTURE.md), [Privacy and safety](docs/PRIVACY-AND-SAFETY.md), [API contract](docs/API-CONTRACT.md), and [Development plan](docs/ROADMAP.md).
