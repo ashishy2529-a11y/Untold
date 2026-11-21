@@ -16,7 +16,9 @@ public class PrivateWriting {
     private UUID ownerId;
     @Column(name = "writing_type", nullable = false, length = 16)
     private String writingType;
-    @Column(name = "encrypted_title", nullable = false, columnDefinition = "MEDIUMBLOB")
+    @Column(name = "title", nullable = false, length = 160)
+    private String title;
+    @Column(name = "encrypted_title", columnDefinition = "MEDIUMBLOB")
     private byte[] encryptedTitle;
     @Column(name = "encrypted_content", nullable = false, columnDefinition = "MEDIUMBLOB")
     private byte[] encryptedContent;
@@ -30,6 +32,7 @@ public class PrivateWriting {
         this.id = UUID.randomUUID();
         this.ownerId = ownerId;
         this.writingType = writingType;
+        this.title = "UNSENT".equals(writingType) ? "UNSENT LETTER" : "PRIVATE NOTE";
         this.encryptedTitle = encryptedTitle;
         this.encryptedContent = encryptedContent;
         this.createdAt = Instant.now();
@@ -38,6 +41,7 @@ public class PrivateWriting {
     public UUID getId(){ return id; }
     public UUID getOwnerId(){ return ownerId; }
     public String getWritingType(){ return writingType; }
+    public String getTitle(){ return title; }
     public byte[] getEncryptedTitle(){ return encryptedTitle; }
     public byte[] getEncryptedContent(){ return encryptedContent; }
     public Instant getCreatedAt(){ return createdAt; }
