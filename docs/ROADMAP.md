@@ -10,10 +10,15 @@
 - [x] Responsive dashboard prototype
 - [x] Nine feature entry points
 - [ ] Accessibility audit and browser/device testing
-- [ ] CI build and lint checks
+- [x] CI workflow configured (first run with MySQL service is being checked)
 
-## Phase 2 — private expression
-- [ ] Production authentication and session management
+## Phase 2 — private expression and identity
+- [x] Initial session-based account registration and login API
+- [x] BCrypt password hashing and server-side sessions
+- [x] CSRF protection and configurable secure session cookies
+- [x] MySQL/Flyway account migration and authentication integration tests added
+- [ ] Verify CI passes on GitHub Actions
+- [ ] Email verification, password reset and login throttling
 - [ ] Encrypted journal and letters persistence
 - [ ] Server-side ownership and cross-user access tests
 - [ ] Export and deletion workflow
