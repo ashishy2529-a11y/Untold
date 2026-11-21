@@ -4,9 +4,25 @@ server:
     include-message: never
     include-binding-errors: never
     include-stacktrace: never
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: ${COOKIE_SECURE:false}
+        same-site: lax
 spring:
   application:
     name: untold-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/untold}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
   jackson:
     default-property-inclusion: non_null
 management:
@@ -17,3 +33,8 @@ management:
   endpoint:
     health:
       show-details: never
+app:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  cookie:
+    secure: ${COOKIE_SECURE:false}
