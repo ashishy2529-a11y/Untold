@@ -77,6 +77,15 @@ export default function App() {
     } finally { setAuthBusy(false) }
   }
 
+  async function deleteEntry(item) {
+    try {
+      const type = item.type === 'UNSENT' ? 'unsent' : 'void'
+      await apiRequest(`/api/private-writing/${type}/${item.id}`, { method: 'DELETE' })
+      setEntries(current => current.filter(entry => entry.id !== item.id))
+      notify('Your writing was deleted from your account.')
+    } catch (error) { notify(error.message) }
+  }
+
   async function handleLogout() {
     try { await apiRequest('/api/auth/logout', { method: 'POST' }) } catch {}
     setUser(null)
@@ -145,8 +154,8 @@ export default function App() {
         <div className="side-divider"/>
         <div className="side-label">YOUR CORNER</div>
         <button className="nav-item" onClick={() => { setModal('void'); setMobileNav(false) }}><LockKeyhole size={17}/>My private notes</button>
-        <button className="nav-item" onClick={() => notify(user ? 'Your saved entries are encrypted in your account.' : 'Sign in to access your private space.')}><BookOpen size={17}/>My space <span className="count">{savedCount}</span></button>
-        <div className="sidebar-bottom"><div className="privacy-card"><ShieldCheck size={17}/><div><strong>Prototype storage only.</strong><p>This is not a secure journal. Do not enter sensitive writing.</p></div></div><div className="profile"><div className="avatar">U</div><div><strong>{user?.email || 'Guest explorer'}</strong><span>{user ? 'Signed in' : 'No account connected'}</span></div><button className="text-link" onClick={user ? handleLogout : () => setAuthMode('login')}>{user ? 'Sign out' : 'Sign in'}</button></div></div>
+        <button className="nav-item" onClick={() => { setActive('my-space'); setMobileNav(false) }}><BookOpen size={17}/>My space <span className="count">{savedCount}</span></button>
+        <div className="sidebar-bottom"><div className="privacy-card"><ShieldCheck size={17}/><div><strong>{user ? 'Encrypted private space.' : 'Account storage required.'}</strong><p>{user ? 'Your private entries are account-owned and encrypted in storage.' : 'Sign in to save private writing to your account.'}</p></div></div><div className="profile"><div className="avatar">U</div><div><strong>{user?.email || 'Guest explorer'}</strong><span>{user ? 'Signed in' : 'No account connected'}</span></div><button className="text-link" onClick={user ? handleLogout : () => setAuthMode('login')}>{user ? 'Sign out' : 'Sign in'}</button></div></div>
       </aside>
 
       <main className="main-area">
@@ -156,7 +165,7 @@ export default function App() {
           <div className="demo-notice"><ShieldCheck size={16}/><span><strong>{user ? 'Private account storage.' : 'Community preview mode.'}</strong> {user ? 'Your VOID and UNSENT entries are encrypted before database storage. Use a trusted device and sign out when finished.' : 'Sign in to use encrypted private writing. Community stories below are examples only.'}</span></div><section className="welcome"><div className="eyebrow"><span/> A LITTLE SPACE TO BE HUMAN</div><h1>There is more to<br/>you than <em>meets the eye.</em></h1><p>You don't have to have the right words. You don't have to be anyone in particular. Just begin wherever you are.</p><button className="primary-btn" onClick={() => setModal('void')}>Put it into words <ArrowUpRight size={16}/></button><div className="welcome-orbit orbit-one"/><div className="welcome-orbit orbit-two"/><div className="welcome-star">✳</div></section>
 
           <section className="section-head"><div><div className="eyebrow">FIND YOUR WAY IN</div><h2>{active === 'home' ? 'A place for every side of you.' : nav.find(n => n.id === active)?.label + ', at your pace.'}</h2><p>Every space stands on its own. Start anywhere.</p></div><span className="module-count">0{visibleModules.length} SPACES</span></section>
-          <section className="module-grid">{visibleModules.map((m, i) => <article className={`module-card ${m.tone}`} key={m.id} style={{'--delay': `${i * 45}ms`}}><div className="module-top"><div className="module-icon"><m.icon size={19}/></div><span className="module-group">{m.group}</span></div><h3>{m.name}</h3><p>{m.desc}</p><button className="text-link" onClick={() => openModule(m.id)}>{m.action}<ArrowUpRight size={15}/></button></article>)}</section>
+          {active !== 'my-space' && <section className="module-grid">{visibleModules.map((m, i) => <article className={`module-card ${m.tone}`} key={m.id} style={{'--delay': `${i * 45}ms`}}><div className="module-top"><div className="module-icon"><m.icon size={19}/></div><span className="module-group">{m.group}</span></div><h3>{m.name}</h3><p>{m.desc}</p><button className="text-link" onClick={() => openModule(m.id)}>{m.action}<ArrowUpRight size={15}/></button></article>)}</section>
 
           {active === 'home' && <section className="community-preview"><div className="section-head compact"><div><div className="eyebrow">A SHARED HUMAN THING</div><h2>Someone, somewhere.</h2><p>Small reminders that none of us are entirely alone.</p></div><button className="subtle-btn" onClick={() => setActive('community')}>See community <ArrowUpRight size={15}/></button></div><div className="story-list">{stories.slice(0,2).map(s => <article className="story-card" key={s.id}><div className="story-meta"><span>{s.category}</span><span>{s.time}</span></div><p>“{s.text}”</p><div className="story-foot"><span><Heart size={14}/> {s.hearts} people felt this</span><span>Shared anonymously</span></div></article>)}</div></section>}
 
