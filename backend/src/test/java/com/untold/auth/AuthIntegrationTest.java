@@ -77,7 +77,7 @@ class AuthIntegrationTest {
             .andExpect(status().isOk()).andExpect(content().json("[]"));
         mvc.perform(put("/api/private-writing/void/" + id).session(other).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\\"title\\":\\"Hijack\\",\\"content\\":\\"not yours\\"}"))
+                .content("{\"title\":\"Hijack\",\"content\":\"not yours\"}"))
             .andExpect(status().isNotFound());
         mvc.perform(delete("/api/private-writing/void/" + id).session(other).with(csrf()))
             .andExpect(status().isNotFound());
