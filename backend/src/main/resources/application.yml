@@ -38,3 +38,5 @@ app:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   cookie:
     secure: ${COOKIE_SECURE:false}
+  encryption:
+    key: ${UNTOLD_DATA_ENCRYPTION_KEY}
