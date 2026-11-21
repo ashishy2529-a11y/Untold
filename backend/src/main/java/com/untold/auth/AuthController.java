@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) return ResponseEntity.badRequest().body(Map.of("error","Password is too long."));
         String email=request.email().trim().toLowerCase(Locale.ROOT);
         if(users.existsByEmail(email)) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","An account with this email already exists."));
         try {
@@ -53,6 +55,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public Map<String,String> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest, HttpServletResponse response) {
+        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Email or password is incorrect.");
         String email=request.email().trim().toLowerCase(Locale.ROOT);
         final Authentication authentication;
         try {
