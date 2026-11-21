@@ -1,10 +1,7 @@
 ALTER TABLE private_writings
-  ADD COLUMN encrypted_title MEDIUMBLOB NULL AFTER writing_type;
+  ADD COLUMN encrypted_title MEDIUMBLOB NULL AFTER title;
 
+-- Existing development records keep their encrypted body; replace any legacy title
+-- with a generic label. New titles are stored encrypted by the application.
 UPDATE private_writings
-  SET encrypted_title = CAST(title AS BINARY)
-  WHERE encrypted_title IS NULL;
-
-ALTER TABLE private_writings
-  MODIFY encrypted_title MEDIUMBLOB NOT NULL,
-  DROP COLUMN title;
+  SET title = CASE WHEN writing_type = 'UNSENT' THEN 'UNSENT LETTER' ELSE 'PRIVATE NOTE' END;
