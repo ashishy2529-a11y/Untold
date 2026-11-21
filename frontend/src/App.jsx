@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { apiRequest, ensureCsrf } from './api'
 import {
   ArrowUpRight, BookOpen, Feather, Heart, Home, LockKeyhole, Menu,
   MessageCircle, Plus, Search, Send, ShieldCheck, Sparkles, X
@@ -22,19 +23,67 @@ const sampleStories = [
   { id: 3, category: 'LIFE', text: 'Sometimes a quiet evening and no expectations are exactly what you need.', time: 'Yesterday', hearts: 19 }
 ]
 
-function readEntries() {
-  try { return JSON.parse(localStorage.getItem('untold-prototype-entries') || '[]') } catch { return [] }
-}
-
 export default function App() {
   const [active, setActive] = useState('home')
   const [modal, setModal] = useState('')
   const [draft, setDraft] = useState('')
-  const [entries, setEntries] = useState(readEntries)
+  const [entries, setEntries] = useState([])
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [authMode, setAuthMode] = useState('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
   const [stories, setStories] = useState(sampleStories)
   const [toast, setToast] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
   const [responseMode, setResponseMode] = useState('JUST LISTEN')
+
+  useEffect(() => {
+    let active = true
+    apiRequest('/api/auth/me').then(async account => {
+      if (!active) return
+      setUser(account)
+      const [voidItems, letters] = await Promise.all([
+        apiRequest('/api/private-writing/void'),
+        apiRequest('/api/private-writing/unsent')
+      ])
+      if (active) setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' })))
+    }).catch(() => {}).finally(() => { if (active) setAuthReady(true) })
+    return () => { active = false }
+  }, [])
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault()
+    setAuthError('')
+    setAuthBusy(true)
+    try {
+      await ensureCsrf()
+      if (authMode === 'register') {
+        await apiRequest('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) })
+      }
+      await apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+      const account = await apiRequest('/api/auth/me')
+      setUser(account)
+      const [voidItems, letters] = await Promise.all([
+        apiRequest('/api/private-writing/void'),
+        apiRequest('/api/private-writing/unsent')
+      ])
+      setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' })))
+      setPassword('')
+    } catch (error) {
+      setAuthError(error.message)
+    } finally { setAuthBusy(false) }
+  }
+
+  async function handleLogout() {
+    try { await apiRequest('/api/auth/logout', { method: 'POST' }) } catch {}
+    setUser(null)
+    setEntries([])
+    setAuthMode('login')
+    notify('You have been signed out.')
+  }
 
   const currentModule = modules.find(m => m.id === modal)
   const savedCount = entries.length
@@ -57,16 +106,20 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2600)
   }
 
-  function saveEntry() {
+  async function saveEntry() {
     const text = draft.trim()
-    if (!text) return
-    const item = { id: Date.now(), text, kind: modal === 'unsent' ? 'UNSENT LETTER' : 'PRIVATE NOTE', createdAt: new Date().toISOString() }
-    const next = [item, ...entries]
-    setEntries(next)
-    localStorage.setItem('untold-prototype-entries', JSON.stringify(next))
-    setDraft('')
-    setModal('')
-    notify('Saved in this browser for this prototype.')
+    if (!text || !user) return
+    try {
+      const type = modal === 'unsent' ? 'unsent' : 'void'
+      const item = await apiRequest(`/api/private-writing/${type}`, {
+        method: 'POST',
+        body: JSON.stringify({ title: modal === 'unsent' ? 'An unsent letter' : 'Private note', content: text })
+      })
+      setEntries(current => [{ ...item, text: item.content, kind: type === 'unsent' ? 'UNSENT LETTER' : 'PRIVATE NOTE' }, ...current])
+      setDraft('')
+      setModal('')
+      notify('Encrypted and saved to your account.')
+    } catch (error) { notify(error.message) }
   }
 
   function publishStory() {
@@ -92,15 +145,15 @@ export default function App() {
         <div className="side-divider"/>
         <div className="side-label">YOUR CORNER</div>
         <button className="nav-item" onClick={() => { setModal('void'); setMobileNav(false) }}><LockKeyhole size={17}/>My private notes</button>
-        <button className="nav-item" onClick={() => notify('Your saved space is stored locally in this prototype.')}><BookOpen size={17}/>My space <span className="count">{savedCount}</span></button>
-        <div className="sidebar-bottom"><div className="privacy-card"><ShieldCheck size={17}/><div><strong>Prototype storage only.</strong><p>This is not a secure journal. Do not enter sensitive writing.</p></div></div><div className="profile"><div className="avatar">U</div><div><strong>Guest explorer</strong><span>No account connected</span></div><span className="online-dot"/></div></div>
+        <button className="nav-item" onClick={() => notify(user ? 'Your saved entries are encrypted in your account.' : 'Sign in to access your private space.')}><BookOpen size={17}/>My space <span className="count">{savedCount}</span></button>
+        <div className="sidebar-bottom"><div className="privacy-card"><ShieldCheck size={17}/><div><strong>Prototype storage only.</strong><p>This is not a secure journal. Do not enter sensitive writing.</p></div></div><div className="profile"><div className="avatar">U</div><div><strong>{user?.email || 'Guest explorer'}</strong><span>{user ? 'Signed in' : 'No account connected'}</span></div><button className="text-link" onClick={user ? handleLogout : () => setAuthMode('login')}>{user ? 'Sign out' : 'Sign in'}</button></div></div>
       </aside>
 
       <main className="main-area">
-        <header className="topbar"><button className="icon-btn menu-toggle" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><div className="breadcrumb">YOUR SPACE <span>/</span> {nav.find(n => n.id === active)?.label.toUpperCase()}</div><div className="top-actions"><span className="private-pill"><LockKeyhole size={13}/> LOCAL DEMO</span><button className="icon-btn" aria-label="Search" onClick={() => notify('Search will arrive with the community feed.') }><Search size={18}/></button></div></header>
+        <header className="topbar"><button className="icon-btn menu-toggle" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><div className="breadcrumb">YOUR SPACE <span>/</span> {nav.find(n => n.id === active)?.label.toUpperCase()}</div><div className="top-actions"><span className="private-pill"><LockKeyhole size={13}/> {user ? 'ACCOUNT SESSION' : 'PREVIEW MODE'}</span><button className="icon-btn" aria-label="Search" onClick={() => notify('Search will arrive with the community feed.') }><Search size={18}/></button></div></header>
 
         <div className="content">
-          <div className="demo-notice"><ShieldCheck size={16}/><span><strong>Prototype mode.</strong> Notes stay in this browser only. Do not enter sensitive or identifying information.</span></div><section className="welcome"><div className="eyebrow"><span/> A LITTLE SPACE TO BE HUMAN</div><h1>There is more to<br/>you than <em>meets the eye.</em></h1><p>You don't have to have the right words. You don't have to be anyone in particular. Just begin wherever you are.</p><button className="primary-btn" onClick={() => setModal('void')}>Put it into words <ArrowUpRight size={16}/></button><div className="welcome-orbit orbit-one"/><div className="welcome-orbit orbit-two"/><div className="welcome-star">✳</div></section>
+          <div className="demo-notice"><ShieldCheck size={16}/><span><strong>{user ? 'Private account storage.' : 'Community preview mode.'}</strong> {user ? 'Your VOID and UNSENT entries are encrypted before database storage. Use a trusted device and sign out when finished.' : 'Sign in to use encrypted private writing. Community stories below are examples only.'}</span></div><section className="welcome"><div className="eyebrow"><span/> A LITTLE SPACE TO BE HUMAN</div><h1>There is more to<br/>you than <em>meets the eye.</em></h1><p>You don't have to have the right words. You don't have to be anyone in particular. Just begin wherever you are.</p><button className="primary-btn" onClick={() => setModal('void')}>Put it into words <ArrowUpRight size={16}/></button><div className="welcome-orbit orbit-one"/><div className="welcome-orbit orbit-two"/><div className="welcome-star">✳</div></section>
 
           <section className="section-head"><div><div className="eyebrow">FIND YOUR WAY IN</div><h2>{active === 'home' ? 'A place for every side of you.' : nav.find(n => n.id === active)?.label + ', at your pace.'}</h2><p>Every space stands on its own. Start anywhere.</p></div><span className="module-count">0{visibleModules.length} SPACES</span></section>
           <section className="module-grid">{visibleModules.map((m, i) => <article className={`module-card ${m.tone}`} key={m.id} style={{'--delay': `${i * 45}ms`}}><div className="module-top"><div className="module-icon"><m.icon size={19}/></div><span className="module-group">{m.group}</span></div><h3>{m.name}</h3><p>{m.desc}</p><button className="text-link" onClick={() => openModule(m.id)}>{m.action}<ArrowUpRight size={15}/></button></article>)}</section>
@@ -113,10 +166,12 @@ export default function App() {
         </div>
       </main>
 
+      {!authReady && <div className="auth-loading">Opening your space…</div>}
+      {authReady && !user && <div className="auth-gate"><form className="auth-card" onSubmit={handleAuthSubmit}><div className="brand-mark auth-mark">u.</div><div className="eyebrow">EVERY STORY HAS A PLACE</div><h2>{authMode === 'login' ? 'Welcome back.' : 'Make room for your story.'}</h2><p>Sign in to save private notes and unsent letters securely to your account.</p><label>Email address<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label><label>Password<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} required minLength={authMode === 'register' ? 12 : 1} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder={authMode === 'register' ? 'At least 12 characters' : 'Your password'}/></label>{authError && <div className="auth-error" role="alert">{authError}</div>}<button className="primary-btn auth-submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'login' ? 'Sign in' : 'Create account'} <ArrowUpRight size={15}/></button><button type="button" className="auth-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}>{authMode === 'login' ? 'New to UNTOLD? Create an account' : 'Already have an account? Sign in'}</button><small>Use a unique password. Email verification and password recovery are not yet available in this development build.</small></form></div>}
       {mobileNav && <button className="scrim" onClick={() => setMobileNav(false)} aria-label="Close navigation"/>}
       {modal && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setModal('')}><section className="write-modal"><button className="modal-close icon-btn" onClick={() => setModal('')} aria-label="Close"><X size={19}/></button><div className="eyebrow">{currentModule?.group || 'YOUR PRIVATE SPACE'}</div><h2>{modal === 'void' ? 'Let it out.' : modal === 'unsent' ? 'A letter that can stay here.' : modal === 'stories' ? 'Your story has a place.' : 'What do you need right now?'}</h2><p className="modal-intro">{modal === 'stories' ? 'This demo adds your story to this browser only. A real public feed needs moderation and server-side publishing.' : modal === 'other-side' ? 'Choose the kind of response you want. This is a local prototype interaction.' : 'Take your time. There is no perfect way to begin.'}</p>
         {modal === 'other-side' && <div className="response-modes">{['JUST LISTEN','UNDERSTAND','ADVICE'].map(v => <button key={v} className={responseMode === v ? 'mode-active' : ''} onClick={() => setResponseMode(v)}>{v}</button>)}</div>}
-        <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} placeholder={modal === 'stories' ? 'A thought, a moment, a little truth...' : modal === 'unsent' ? 'Dear...' : 'Start anywhere...'} rows={7}/><div className="modal-bottom"><span><LockKeyhole size={13}/> {modal === 'stories' ? 'LOCAL PREVIEW — NOT ONLINE' : 'SAVED ONLY IN THIS BROWSER'}</span><button className="primary-btn" disabled={!draft.trim()} onClick={modal === 'stories' ? publishStory : saveEntry}>{modal === 'stories' ? 'Add preview story' : 'Save privately'} <ArrowUpRight size={15}/></button></div></section></div>}
+        <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} placeholder={modal === 'stories' ? 'A thought, a moment, a little truth...' : modal === 'unsent' ? 'Dear...' : 'Start anywhere...'} rows={7}/><div className="modal-bottom"><span><LockKeyhole size={13}/> {modal === 'stories' ? 'LOCAL PREVIEW — NOT ONLINE' : 'ENCRYPTED ACCOUNT STORAGE'}</span><button className="primary-btn" disabled={!draft.trim()} onClick={modal === 'stories' ? publishStory : saveEntry}>{modal === 'stories' ? 'Add preview story' : 'Save privately'} <ArrowUpRight size={15}/></button></div></section></div>}
       {toast && <div className="toast"><ShieldCheck size={16}/>{toast}</div>}
     </div>
   )
