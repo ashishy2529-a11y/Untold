@@ -1,10 +1,10 @@
 # Architecture
 
-## Initial stack
+## Stack
 - Frontend: React 18, Vite, JavaScript and CSS.
-- API: Java 21, Spring Boot 3.4, REST, Spring Security and Bean Validation.
+- API: Java 21, Spring Boot 3.4, Spring Security and Bean Validation.
 - Database: MySQL 8+ with Flyway migrations and Spring Data JPA.
-- API and frontend are separate deployable components.
+- Frontend and API are separate deployable components.
 
 ## Logical layers
 1. Browser UI: presentation, accessible controls and client-side validation.
@@ -13,19 +13,25 @@
 4. Persistence: repositories and ordered database migrations.
 5. Operations: secrets, logs without private content, backups, monitoring and incident response.
 
-## Authentication foundation implemented
+## Authentication implemented
 - Account registration and normalized email storage.
 - BCrypt password hashing.
-- Server-side HTTP sessions; the session cookie is HttpOnly and SameSite=Lax.
+- Server-side HTTP sessions; HttpOnly and SameSite=Lax session cookie.
 - CSRF cookie/token support for state-changing requests.
 - Configurable cookie Secure flag and explicit CORS origin.
-- Flyway migration for the account table.
-- Auth endpoints: `GET /api/auth/csrf`, `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+- Protected current-account endpoint and logout.
+- React sign-in/register interface connected using credentialed requests and CSRF header.
 
-## API families (planned)
+## Private writing implemented
+- THE VOID and THE UNSENT share an account-owned private-writing service.
+- Each record is encrypted with AES-256-GCM using a fresh random 96-bit IV and 128-bit authentication tag.
+- Encryption key is injected from `UNTOLD_DATA_ENCRYPTION_KEY`; it is not stored in source code.
+- Reads, updates and deletes are scoped by both record ID and authenticated owner ID.
+- React My Space loads the signed-in account's private entries and supports deletion.
+
+## Planned API families
 - `/api/auth/*`
-- `/api/journal/*`
-- `/api/letters/*`
+- `/api/private-writing/{void|unsent}/*`
 - `/api/community/*`
 - `/api/discussions/*`
 - `/api/reports/*`
@@ -36,8 +42,5 @@
 - `/api/time-capsules/*`
 - `/api/admin/*`
 
-## Authorization rule
-Every private-object read, update and delete must authenticate the requester and enforce ownership on the server. Never trust a client-supplied owner ID or anonymous display name as proof of identity.
-
-## Current limitations
-Authentication is an initial foundation, not a production security certification. Email verification, password reset, login rate limiting, account recovery and a security review are still pending. The frontend remains a UI prototype and its demo notes are stored in browser local storage. There are no server-side journal/letter endpoints, encryption service, live community feed or moderation workflows yet. Do not enter real sensitive writing into the prototype.
+## Important limitations
+This is a development milestone, not a production security certification. Email verification, password reset, login rate limiting, account recovery, encryption key rotation/recovery, account-wide export/deletion and independent security review remain pending. The sample community feed is not live or moderated. Deployment, real-device verification and production secrets configuration have not been completed. Never use this prototype as emergency support.
