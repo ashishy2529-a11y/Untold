@@ -42,7 +42,9 @@ public class PrivateWritingController {
 
     @GetMapping("/{type}/{id}")
     public WritingResponse get(@PathVariable String type, @PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
-        return toResponse(findOwned(id, user));
+        PrivateWriting writing = findOwned(id, user);
+        if (!writing.getWritingType().equals(normalizeType(type))) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return toResponse(writing);
     }
 
     @PutMapping("/{type}/{id}")
