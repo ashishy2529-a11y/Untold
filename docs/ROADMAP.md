@@ -9,22 +9,26 @@
 ## Phase 1 — app shell
 - [x] Responsive dashboard prototype
 - [x] Nine feature entry points
-- [ ] Accessibility audit and browser/device testing
-- [x] CI workflow configured (first run with MySQL service is being checked)
+- [ ] Accessibility audit and real-device testing
+- [x] GitHub Actions frontend build
 
 ## Phase 2 — private expression and identity
-- [x] Initial session-based account registration and login API
+- [x] Account registration and login UI connected to backend
 - [x] BCrypt password hashing and server-side sessions
 - [x] CSRF protection and configurable secure session cookies
-- [x] MySQL/Flyway account migration and authentication integration tests added
-- [ ] Verify CI passes on GitHub Actions
+- [x] MySQL/Flyway account and private-writing migrations
+- [x] THE VOID and THE UNSENT create/list/read/update/delete API
+- [x] AES-256-GCM encryption of private writing at rest
+- [x] Server-side owner scoping on every private-writing operation
+- [x] My Space view and delete control connected to API
+- [x] Integration tests for authentication, encrypted storage and cross-account access
+- [ ] Confirm latest full CI run after final test additions
 - [ ] Email verification, password reset and login throttling
-- [ ] Encrypted journal and letters persistence
-- [ ] Server-side ownership and cross-user access tests
-- [ ] Export and deletion workflow
+- [ ] Key rotation/recovery procedure and independent security review
+- [ ] Export and account-wide deletion workflow
 
 ## Phase 3 — community
-- [ ] Moderated story publishing and feed
+- [ ] Moderated story publishing and live feed
 - [ ] Reporting, blocking and moderator queue
 - [ ] Appeals and audit events
 - [ ] Rate limits and abuse controls
