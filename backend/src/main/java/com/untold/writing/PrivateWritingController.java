@@ -30,7 +30,7 @@ public class PrivateWritingController {
     @ResponseStatus(HttpStatus.CREATED)
     public WritingResponse create(@PathVariable String type, @Valid @RequestBody WritingRequest request, @AuthenticationPrincipal UserAccount user) {
         String safeType = normalizeType(type);
-        PrivateWriting saved = repository.save(new PrivateWriting(user.getId(), safeType, request.title().trim(), encryption.encrypt(request.content())));
+        PrivateWriting saved = repository.save(new PrivateWriting(user.getId(), safeType, encryption.encrypt(request.title().trim()), encryption.encrypt(request.content())));
         return toResponse(saved);
     }
 
@@ -49,7 +49,7 @@ public class PrivateWritingController {
     public WritingResponse update(@PathVariable String type, @PathVariable UUID id, @Valid @RequestBody WritingRequest request, @AuthenticationPrincipal UserAccount user) {
         PrivateWriting writing = findOwned(id, user);
         if (!writing.getWritingType().equals(normalizeType(type))) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        writing.update(request.title().trim(), encryption.encrypt(request.content()));
+        writing.update(encryption.encrypt(request.title().trim()), encryption.encrypt(request.content()));
         return toResponse(repository.save(writing));
     }
 
@@ -71,7 +71,7 @@ public class PrivateWritingController {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
     private WritingResponse toResponse(PrivateWriting writing) {
-        return new WritingResponse(writing.getId(), writing.getWritingType(), writing.getTitle(),
+        return new WritingResponse(writing.getId(), writing.getWritingType(), encryption.decrypt(writing.getEncryptedTitle()),
                 encryption.decrypt(writing.getEncryptedContent()), writing.getCreatedAt(), writing.getUpdatedAt());
     }
 }
