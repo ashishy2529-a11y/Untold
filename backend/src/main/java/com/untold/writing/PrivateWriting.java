@@ -16,8 +16,8 @@ public class PrivateWriting {
     private UUID ownerId;
     @Column(name = "writing_type", nullable = false, length = 16)
     private String writingType;
-    @Column(name = "title", nullable = false, length = 160)
-    private String title;
+    @Column(name = "encrypted_title", nullable = false, columnDefinition = "MEDIUMBLOB")
+    private byte[] encryptedTitle;
     @Column(name = "encrypted_content", nullable = false, columnDefinition = "MEDIUMBLOB")
     private byte[] encryptedContent;
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -26,11 +26,11 @@ public class PrivateWriting {
     private Instant updatedAt;
 
     protected PrivateWriting() {}
-    public PrivateWriting(UUID ownerId, String writingType, String title, byte[] encryptedContent) {
+    public PrivateWriting(UUID ownerId, String writingType, byte[] encryptedTitle, byte[] encryptedContent) {
         this.id = UUID.randomUUID();
         this.ownerId = ownerId;
         this.writingType = writingType;
-        this.title = title;
+        this.encryptedTitle = encryptedTitle;
         this.encryptedContent = encryptedContent;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
@@ -38,12 +38,12 @@ public class PrivateWriting {
     public UUID getId(){ return id; }
     public UUID getOwnerId(){ return ownerId; }
     public String getWritingType(){ return writingType; }
-    public String getTitle(){ return title; }
+    public byte[] getEncryptedTitle(){ return encryptedTitle; }
     public byte[] getEncryptedContent(){ return encryptedContent; }
     public Instant getCreatedAt(){ return createdAt; }
     public Instant getUpdatedAt(){ return updatedAt; }
-    public void update(String title, byte[] encryptedContent) {
-        this.title = title;
+    public void update(byte[] encryptedTitle, byte[] encryptedContent) {
+        this.encryptedTitle = encryptedTitle;
         this.encryptedContent = encryptedContent;
         this.updatedAt = Instant.now();
     }
