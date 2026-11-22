@@ -35,7 +35,7 @@ export default function App() {
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
-  const [stories, setStories] = useState(sampleStories)
+  const [stories, setStories] = useState([])
   const [toast, setToast] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
   const [responseMode, setResponseMode] = useState('JUST LISTEN')
@@ -49,7 +49,7 @@ export default function App() {
         apiRequest('/api/private-writing/void'),
         apiRequest('/api/private-writing/unsent')
       ])
-      if (active) setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' })))
+      if (active) { setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' }))); const feed = await apiRequest('/api/community/feed'); setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 }))); const feed = await apiRequest('/api/community/feed'); setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 }))) }
     }).catch(() => {}).finally(() => { if (active) setAuthReady(true) })
     return () => { active = false }
   }, [])
@@ -131,17 +131,42 @@ export default function App() {
     } catch (error) { notify(error.message) }
   }
 
-  function publishStory() {
+  async function publishStory() {
     const text = draft.trim()
-    if (!text) return
-    setStories([{ id: Date.now(), category: 'COMMUNITY', text, time: 'Just now', hearts: 0 }, ...stories])
-    setDraft('')
-    setModal('')
-    notify('Prototype story added to this screen only—not published online.')
+    if (!text || !user) { notify('Sign in before submitting a community story.'); return }
+    try {
+      await apiRequest('/api/community/posts', {
+        method: 'POST',
+        body: JSON.stringify({ category: 'OTHER', content: text })
+      })
+      setDraft('')
+      setModal('')
+      notify('Submitted for moderation. Your story is not public until approved.')
+    } catch (error) { notify(error.message) }
+  }
+
+  async function reportStory(story) {
+    const reason = window.prompt('Report reason: HARASSMENT, HATE, THREATS, DOXXING, SEXUAL_CONTENT, SPAM, SELF_HARM_RISK, OTHER')
+    if (!reason) return
+    try {
+      await apiRequest('/api/community/posts/' + story.id + '/report', {
+        method: 'POST', body: JSON.stringify({ reason, details: '' })
+      })
+      notify('Report sent to the safety review queue.')
+    } catch (error) { notify(error.message) }
+  }
+
+  async function blockStoryAuthor(story) {
+    if (!window.confirm("Hide this author's stories from your feed?")) return
+    try {
+      await apiRequest('/api/community/posts/' + story.id + '/block-author', { method: 'POST' })
+      setStories(current => current.filter(item => item.id !== story.id))
+      notify('Author blocked. Their stories will be hidden from your feed.')
+    } catch (error) { notify(error.message) }
   }
 
   function openModule(id) {
-    if (id === 'void' || id === 'unsent' || id === 'stories' || id === 'other-side') setModal(id)
+    if (id === 'void' || id === 'unsent' || id === 'stories' || id === 'other-side') { if (id === 'stories' && !user) { setAuthMode('login'); notify('Sign in to submit a community story.'); return } setModal(id) }
     else notify('This module is mapped in the product; its full workflow is planned for a later build.')
   }
 
@@ -169,9 +194,9 @@ export default function App() {
 
           {active === 'my-space' && <section className="my-space"><div className="section-head compact"><div><div className="eyebrow">YOUR PRIVATE WRITING</div><h2>Only yours.</h2><p>Entries belong to your account. Delete anything whenever you choose.</p></div><button className="primary-btn small" onClick={() => setModal('void')}><Plus size={15}/> New note</button></div>{entries.length === 0 ? <div className="empty-space">Nothing saved yet. Start with a private note or an unsent letter.</div> : <div className="private-entry-list">{entries.map(item => <article className="private-entry" key={item.id}><div className="story-meta"><span>{item.kind}</span><span>{new Date(item.updatedAt || item.createdAt).toLocaleString()}</span></div><h3>{item.title}</h3><p>{item.content}</p><button className="delete-entry" onClick={() => deleteEntry(item)}>Delete this entry</button></article>)}</div>}</section>}
 
-          {active === 'home' && <section className="community-preview"><div className="section-head compact"><div><div className="eyebrow">A SHARED HUMAN THING</div><h2>Someone, somewhere.</h2><p>Small reminders that none of us are entirely alone.</p></div><button className="subtle-btn" onClick={() => setActive('community')}>See community <ArrowUpRight size={15}/></button></div><div className="story-list">{stories.slice(0,2).map(s => <article className="story-card" key={s.id}><div className="story-meta"><span>{s.category}</span><span>{s.time}</span></div><p>“{s.text}”</p><div className="story-foot"><span><Heart size={14}/> {s.hearts} people felt this</span><span>Shared anonymously</span></div></article>)}</div></section>}
+          {active === 'home' && <section className="community-preview"><div className="section-head compact"><div><div className="eyebrow">A SHARED HUMAN THING</div><h2>Someone, somewhere.</h2><p>Small reminders that none of us are entirely alone.</p></div><button className="subtle-btn" onClick={() => setActive('community')}>See community <ArrowUpRight size={15}/></button></div><div className="story-list">{stories.slice(0,2).map(s => <article className="story-card" key={s.id}><div className="story-meta"><span>{s.category}</span><span>{s.time}</span></div><p>“{s.text}”</p><div className="story-foot"><span><Heart size={14}/> Shared anonymously</span><span><button className="text-link" onClick={() => reportStory(s)}>Report</button> <button className="text-link" onClick={() => blockStoryAuthor(s)}>Block author</button></span></div></article>)}</div></section>}
 
-          {active === 'community' && <section className="community-preview"><div className="section-head compact"><div><div className="eyebrow">COMMUNITY NOTES</div><h2>Stories from somewhere.</h2><p>Prototype examples only. Not connected to other users.</p></div><button className="primary-btn small" onClick={() => setModal('stories')}><Plus size={15}/> Share a story</button></div><div className="story-list">{stories.map(s => <article className="story-card" key={s.id}><div className="story-meta"><span>{s.category}</span><span>{s.time}</span></div><p>“{s.text}”</p><div className="story-foot"><span><Heart size={14}/> {s.hearts} people felt this</span><span>Anonymous preview</span></div></article>)}</div></section>}
+          {active === 'community' && <section className="community-preview"><div className="section-head compact"><div><div className="eyebrow">COMMUNITY NOTES</div><h2>Stories from somewhere.</h2><p>Approved stories only. New submissions are reviewed before they become public.</p></div><button className="primary-btn small" onClick={() => setModal('stories')}><Plus size={15}/> Share a story</button></div><div className="story-list">{stories.map(s => <article className="story-card" key={s.id}><div className="story-meta"><span>{s.category}</span><span>{s.time}</span></div><p>“{s.text}”</p><div className="story-foot"><span><Heart size={14}/> {s.hearts} people felt this</span><span>Shared anonymously</span></div></article>)}</div></section>}
 
           <footer><span>UNTOLD<span className="lavender">.</span> — EVERY STORY HAS A PLACE.</span><span>BUILT ON THE BELIEF THAT EVERYONE HAS A STORY.</span></footer>
         </div>
@@ -180,9 +205,9 @@ export default function App() {
       {!authReady && <div className="auth-loading">Opening your space…</div>}
       {authReady && !user && <div className="auth-gate"><form className="auth-card" onSubmit={handleAuthSubmit}><div className="brand-mark auth-mark">u.</div><div className="eyebrow">EVERY STORY HAS A PLACE</div><h2>{authMode === 'login' ? 'Welcome back.' : 'Make room for your story.'}</h2><p>Sign in to save private notes and unsent letters securely to your account.</p><label>Email address<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label><label>Password<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} required minLength={authMode === 'register' ? 12 : 1} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder={authMode === 'register' ? 'At least 12 characters' : 'Your password'}/></label>{authError && <div className="auth-error" role="alert">{authError}</div>}<button className="primary-btn auth-submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'login' ? 'Sign in' : 'Create account'} <ArrowUpRight size={15}/></button><button type="button" className="auth-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}>{authMode === 'login' ? 'New to UNTOLD? Create an account' : 'Already have an account? Sign in'}</button><small>Use a unique password. Email verification and password recovery are not yet available in this development build.</small></form></div>}
       {mobileNav && <button className="scrim" onClick={() => setMobileNav(false)} aria-label="Close navigation"/>}
-      {modal && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setModal('')}><section className="write-modal"><button className="modal-close icon-btn" onClick={() => setModal('')} aria-label="Close"><X size={19}/></button><div className="eyebrow">{currentModule?.group || 'YOUR PRIVATE SPACE'}</div><h2>{modal === 'void' ? 'Let it out.' : modal === 'unsent' ? 'A letter that can stay here.' : modal === 'stories' ? 'Your story has a place.' : 'What do you need right now?'}</h2><p className="modal-intro">{modal === 'stories' ? 'This demo adds your story to this browser only. A real public feed needs moderation and server-side publishing.' : modal === 'other-side' ? 'Choose the kind of response you want. This is a local prototype interaction.' : 'Take your time. There is no perfect way to begin.'}</p>
+      {modal && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setModal('')}><section className="write-modal"><button className="modal-close icon-btn" onClick={() => setModal('')} aria-label="Close"><X size={19}/></button><div className="eyebrow">{currentModule?.group || 'YOUR PRIVATE SPACE'}</div><h2>{modal === 'void' ? 'Let it out.' : modal === 'unsent' ? 'A letter that can stay here.' : modal === 'stories' ? 'Your story has a place.' : 'What do you need right now?'}</h2><p className="modal-intro">{modal === 'stories' ? 'Your story is submitted anonymously for moderation. It will not appear publicly until a moderator approves it.' : modal === 'other-side' ? 'Choose the kind of response you want. This is a local prototype interaction.' : 'Take your time. There is no perfect way to begin.'}</p>
         {modal === 'other-side' && <div className="response-modes">{['JUST LISTEN','UNDERSTAND','ADVICE'].map(v => <button key={v} className={responseMode === v ? 'mode-active' : ''} onClick={() => setResponseMode(v)}>{v}</button>)}</div>}
-        <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} placeholder={modal === 'stories' ? 'A thought, a moment, a little truth...' : modal === 'unsent' ? 'Dear...' : 'Start anywhere...'} rows={7}/><div className="modal-bottom"><span><LockKeyhole size={13}/> {modal === 'stories' ? 'LOCAL PREVIEW — NOT ONLINE' : 'ENCRYPTED ACCOUNT STORAGE'}</span><button className="primary-btn" disabled={!draft.trim()} onClick={modal === 'stories' ? publishStory : saveEntry}>{modal === 'stories' ? 'Add preview story' : 'Save privately'} <ArrowUpRight size={15}/></button></div></section></div>}
+        <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} placeholder={modal === 'stories' ? 'A thought, a moment, a little truth...' : modal === 'unsent' ? 'Dear...' : 'Start anywhere...'} rows={7}/><div className="modal-bottom"><span><LockKeyhole size={13}/> {modal === 'stories' ? 'SUBMITTED FOR MODERATION' : 'ENCRYPTED ACCOUNT STORAGE'}</span><button className="primary-btn" disabled={!draft.trim()} onClick={modal === 'stories' ? publishStory : saveEntry}>{modal === 'stories' ? 'Submit for review' : 'Save privately'} <ArrowUpRight size={15}/></button></div></section></div>}
       {toast && <div className="toast"><ShieldCheck size={16}/>{toast}</div>}
     </div>
   )
