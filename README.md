@@ -15,7 +15,7 @@ The repository now includes:
 - My Space UI for viewing and deleting account-owned writing.
 - GitHub Actions workflows for frontend build and backend integration tests.
 
-The community feed is still sample/demo content. Other feature cards are entry points/placeholders; they are not complete production workflows.
+The community submission, report, block and moderator decision APIs are implemented, and the frontend submits stories for human review. The moderation queue currently has no frontend dashboard; the first moderator must be provisioned manually by a trusted database operator. Other feature cards are entry points/placeholders; they are not complete production workflows.
 
 ## Repository layout
 - `frontend/` — React application
@@ -65,6 +65,6 @@ The default frontend API base URL is `http://localhost:8080`. Health check: `GET
 6. Human experiments are voluntary and transparently described.
 
 ## Not production-ready yet
-Email verification, password reset, login throttling/rate limiting, key rotation and recovery procedures, account-wide export/deletion, security monitoring, independent security review, production deployment and real-device verification remain pending. The community modules are not live or moderated. Do not enter sensitive writing into a deployment you do not control, and do not treat UNTOLD as emergency or clinical support.
+Email verification, password reset, login throttling/rate limiting, key rotation and recovery procedures, account-wide export/deletion, security monitoring, independent security review, production deployment and real-device verification remain pending. Community publishing is review-gated, but the moderation operations are not production-ready: there is no moderator dashboard, appeals workflow, automated abuse/rate-limit system or staffing process. Do not invite real users or enter sensitive writing into a deployment you do not control. Do not treat UNTOLD as emergency or clinical support.
 
-See [Product specification](docs/PRODUCT.md), [Architecture](docs/ARCHITECTURE.md), [Privacy and safety](docs/PRIVACY-AND-SAFETY.md), [API contract](docs/API-CONTRACT.md), and [Development plan](docs/ROADMAP.md).
+See [Product specification](docs/PRODUCT.md), [Architecture](docs/ARCHITECTURE.md), [Privacy and safety](docs/PRIVACY-AND-SAFETY.md), [API contract](docs/API-CONTRACT.md), [Community moderation operations](docs/COMMUNITY-MODERATION.md), and [Development plan](docs/ROADMAP.md).
