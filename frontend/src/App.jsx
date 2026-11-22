@@ -49,7 +49,7 @@ export default function App() {
         apiRequest('/api/private-writing/void'),
         apiRequest('/api/private-writing/unsent')
       ])
-      if (active) { setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' }))); const feed = await apiRequest('/api/community/feed'); setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 }))); const feed = await apiRequest('/api/community/feed'); setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 }))) }
+      if (active) { setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' }))); const feed = await apiRequest('/api/community/feed'); setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 }))) }
     }).catch(() => {}).finally(() => { if (active) setAuthReady(true) })
     return () => { active = false }
   }, [])
