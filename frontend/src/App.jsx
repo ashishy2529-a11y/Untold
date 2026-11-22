@@ -71,6 +71,8 @@ export default function App() {
         apiRequest('/api/private-writing/unsent')
       ])
       setEntries([...voidItems, ...letters].map(item => ({ ...item, text: item.content, kind: item.type === 'UNSENT' ? 'UNSENT LETTER' : 'PRIVATE NOTE' })))
+      const feed = await apiRequest('/api/community/feed')
+      setStories(feed.map(item => ({ ...item, text: item.content, time: new Date(item.createdAt).toLocaleString(), hearts: 0 })))
       setPassword('')
     } catch (error) {
       setAuthError(error.message)
