@@ -21,19 +21,21 @@ public class UserAccount implements UserDetails {
     private String passwordHash;
     @Column(name="status", nullable=false, length=16)
     private String status = "ACTIVE";
+    @Column(name="role", nullable=false, length=24)
+    private String role = "USER";
     @Column(name="created_at", nullable=false, updatable=false)
     private Instant createdAt;
 
     protected UserAccount() {}
     public UserAccount(String email, String passwordHash) {
         this.id=UUID.randomUUID(); this.email=email; this.passwordHash=passwordHash;
-        this.status="ACTIVE"; this.createdAt=Instant.now();
+        this.status="ACTIVE"; this.role="USER"; this.createdAt=Instant.now();
     }
     public UUID getId(){ return id; }
     public String getEmail(){ return email; }
     @Override public String getUsername(){ return email; }
     @Override public String getPassword(){ return passwordHash; }
-    @Override public Collection<? extends GrantedAuthority> getAuthorities(){ return List.of(new SimpleGrantedAuthority("ROLE_USER")); }
+    @Override public Collection<? extends GrantedAuthority> getAuthorities(){ return List.of(new SimpleGrantedAuthority("ROLE_"+role)); }
     @Override public boolean isAccountNonExpired(){ return true; }
     @Override public boolean isAccountNonLocked(){ return "ACTIVE".equals(status); }
     @Override public boolean isCredentialsNonExpired(){ return true; }
